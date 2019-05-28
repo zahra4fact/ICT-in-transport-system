@@ -1,0 +1,79 @@
+
+var startDate = new ISODate("2017-10-01T00:00:00")
+var startUnixTime = startDate.getTime() /1000
+var endDate = new ISODate("2017-10-30T23:59:59")
+var endUnixTime = endDate.getTime() / 1000
+Next_time = -2*60*60
+
+var result = db.PermanentBookings.aggregate([
+
+    {
+      $match: { 
+            city: "Torino",
+            init_time: { $gte: startUnixTime+Next_time, $lte: endUnixTime+Next_time},
+            "public_transport.duration":{$ne:-1}
+            //"walking.duration":{$ne:-1}
+
+        	}
+
+    },
+
+        {
+
+        $project: { 
+
+            _id: 0,
+            city: 1,
+            moved: { $ne: [
+
+                {$arrayElemAt: [ "$origin_destination.coordinates", 0]},
+                {$arrayElemAt: [ "$origin_destination.coordinates", 1]}
+
+                ]
+
+            },
+
+            duration: { $floor:{$divide: [ { $subtract: ["$final_time", "$init_time"] }, 60 ] }},
+            init_date:1,
+            init_time: 1,
+            hourDay: {$hour: "$init_date"},
+            day: {$dayOfMonth: "$init_date"},
+            ptDduration:{$floor:{$divide:["$public_transport.duration",60]}}
+            //walking_duration : {$floor:{$divide:["$walking.duration",60]}}
+
+        }   
+
+     },
+
+        {
+
+         $match: { 
+
+             moved: true, 
+             duration: {$lte: 180, $gt: 2} 
+
+         }
+
+     },
+
+
+
+{
+
+   $sort:{
+
+       "day":1,
+       "hourDay":1
+
+        }
+
+    }
+
+ ])
+
+while(result.hasNext()) {
+
+    o= result.next()
+    print (o["duration"],o["ptDduration"])
+
+}
